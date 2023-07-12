@@ -110,7 +110,9 @@ class MLDTicket:
         sla_resolution = self.sla_resolution.split(':')
         time = ['11', '10', '09', '08', '07',
                 '06', '05', '04', '03', '02', '01']
-        if len(sla_periodic) >= 2:
+        if self.assigned_to == 'Ninguém':
+            mention = '!here'
+        elif len(sla_periodic) >= 2:
             if sla_periodic[1] in time:
                 mention = '!here'
         elif len(sla_resolution) >= 2:
