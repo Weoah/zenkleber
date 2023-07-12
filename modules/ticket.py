@@ -111,6 +111,7 @@ class MLDTicket:
         return message
 
     def __update_message(self) -> str:
+        self.__get_last_comment(update=True)
         updated_at = self.updated_at.strftime("%H:%M - %d/%m")
         update = f'_{updated_at} atualizado por {self.updated_by}_'
         message = f'*Ticket #{self.id}* | {update} :white_check_mark:'
@@ -119,7 +120,7 @@ class MLDTicket:
     def _chat_mention(self) -> str:
         mention = self._chat_message()
         if self.assigned_to == 'Ninguém':
-            mention = '!here'
+            mention = '@acarvalho'
         return mention
 
     def _chat_message(self) -> str:
@@ -227,7 +228,7 @@ class MLDTicket:
             expire_msg = self.periodic_update
         return expire_msg
 
-    def __get_last_comment(self) -> str:
+    def __get_last_comment(self, update: bool = False) -> str | None:
         comments = self.session.tickets.comments(self.id)  # type:ignore
         count = 2
         comments_len = len(comments) - 1
@@ -238,6 +239,8 @@ class MLDTicket:
             comment = comments[comments_len:][0]  # type:ignore
             count += 1
         self.updated_at = datetime.fromtimestamp(comment.created.timestamp())
+        if update:
+            return None
         self.updated_by = comment.author.name
         return f'_{comment.author.name}_\n\n{comment.body[:300]}'
 
