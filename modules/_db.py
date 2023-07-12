@@ -67,7 +67,10 @@ class Database:
                 created_at DATETIME,
                 periodic_expires DATETIME,
                 resolution_expires DATETIME,
-                send INTEGER
+                send INTEGER,
+                edited INTEGER,
+                chat VARCHAR(255),
+                ts VARCHAR(255)
             )
         """)
 
@@ -82,5 +85,5 @@ db = Database()
 
 if __name__ == '__main__':
     # db._drop_table()
-    db._reset_send()
+    # db._reset_send()
     ...

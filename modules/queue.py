@@ -11,7 +11,6 @@ class MLDTicketQueue:
 
     def __init__(self) -> None:
         self.tickets: List[MLDTicket] = []
-        # self.get_tickets()
 
     def add_ticket(self, ticket: MLDTicket) -> None:
         if ticket not in self.tickets:
@@ -54,6 +53,28 @@ class MLDTicketQueue:
             return
         if send % 2 == 0:
             await self.send_ticket(ticket)
+
+    async def update_new(self) -> None:
+        response = td.new_sla_update('10 minutes')
+        for ticket in response:
+            await self.update_ticket(ticket[0])
+
+    async def update_resolution(self) -> None:
+        response = td.resolution_sla_update('1 hour')
+        for ticket in response:
+            await self.update_ticket(ticket[0])
+
+    async def update_periodic(self) -> None:
+        response = td.periodic_sla_update('30 minutes')
+        for ticket in response:
+            await self.update_ticket(ticket[0])
+
+    async def update_ticket(self, id) -> None:
+        ticket = [
+            ticket for ticket in self.tickets
+            if str(ticket.id) == str(id)]
+        if ticket:
+            ticket[0].edit_metrics_message()
 
 
 ticket_queue = MLDTicketQueue()
