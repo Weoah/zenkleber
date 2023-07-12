@@ -18,5 +18,7 @@ def edit_message(id: str | None, message: str):
     if id is None:
         return
     result = td.last_message(id)
-    client.chat_update(channel=result[0][0], ts=result[0][1], text=message)
-    td.edit_message(id)
+    if result:
+        client.chat_update(channel=result[0][0], ts=result[0][1], text=message)
+        td.edit_message(id)
+    return
