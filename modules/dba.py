@@ -89,7 +89,7 @@ class TicketData:
     def resolution_sla_update(self, time: str) -> list:
         result = db.query(f"""
             SELECT ticket_id FROM ticket
-            WHERE resolution_expires >= DATETIME('now', 'localtime', '-{time}')
+            WHERE resolution_expires >= DATETIME('now', 'localtime', '{time}')
             AND (NOT ticket_id = '4937' AND send != '0')
         """)
         if result:
@@ -109,7 +109,7 @@ class TicketData:
     def periodic_sla_update(self, time: str) -> list:
         result = db.query(f"""
             SELECT ticket_id FROM ticket
-            WHERE periodic_expires >= DATETIME('now', 'localtime', '-{time}')
+            WHERE periodic_expires >= DATETIME('now', 'localtime', '{time}')
             AND (NOT ticket_id = '4937' AND send != '0')
         """)
         if result:

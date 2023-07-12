@@ -88,8 +88,9 @@ class MLDTicket:
 
     def edit_metrics_message(self):
         message = self.__update_message()
-        logger.info(f'Editando a mensagem - {message}')
-        edit_message(self.id, message)
+        result = edit_message(self.id, message)
+        if result is not None:
+            logger.info(f'Editando a mensagem - {message}')
 
     def __generate_message(self) -> str:
         updated_at = self.updated_at.strftime("%H:%M - %d/%m")
@@ -117,22 +118,12 @@ class MLDTicket:
 
     def _chat_mention(self) -> str:
         mention = self._chat_message()
-        sla_periodic = self.sla_periodic.split(':')
-        sla_resolution = self.sla_resolution.split(':')
-        time = ['11', '10', '09', '08', '07',
-                '06', '05', '04', '03', '02', '01']
         if self.assigned_to == 'Ninguém':
             mention = '!here'
-        elif len(sla_periodic) >= 2:
-            if sla_periodic[1] in time:
-                mention = '!here'
-        elif len(sla_resolution) >= 2:
-            if sla_resolution[1] in time:
-                mention = '!here'
         return mention
 
     def _chat_message(self) -> str:
-        return '@jcristofaro'
+        # return '@jcristofaro'
         match self.assigned_to:
             case 'Flávio Fraga':
                 return '@ffraga'
