@@ -11,27 +11,27 @@ class Database:
         self.__first_time()
 
     def query(self, statement: str):
+        self.lock.acquire()
         self.__connect()
         cur = self.__start()
-        self.lock.acquire()
         cur.execute(statement)  # type:ignore
         result = cur.fetchall()  # type:ignore
         cur.close()  # type:ignore
-        self.lock.release()
         self.__close()
+        self.lock.release()
         if not result:
             return False
         return result
 
     def execute(self, statement: str):
+        self.lock.acquire()
         self.__connect()
         cur = self.__start()
-        self.lock.acquire()
         cur.execute(statement)  # type:ignore
         self.db.commit()
         cur.close()  # type:ignore
-        self.lock.release()
         self.__close()
+        self.lock.release()
         return True
 
     def __connect(self):
@@ -59,23 +59,28 @@ class Database:
         self.execute("""
             CREATE TABLE IF NOT EXISTS ticket
             (
-                id integer primary key autoincrement,
-                ticket_id varchar(255),
-                status varchar(255),
-                designee varchar(255),
-                policy varchar(255),
-                created_at datetime,
-                periodic_expires datetime,
-                resolution_expires datetime
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ticket_id VARCHAR(255),
+                status VARCHAR(255),
+                designee VARCHAR(255),
+                policy VARCHAR(255),
+                created_at DATETIME,
+                periodic_expires DATETIME,
+                resolution_expires DATETIME,
+                send INTEGER
             )
         """)
 
     def _drop_table(self):
-        self.execute("""drop table ticket""")
+        self.execute("""DROP TABLE ticket""")
+
+    def _reset_send(self):
+        self.execute("""UPDATE ticket SET send = '0' WHERE id >= 1""")
 
 
 db = Database()
 
 if __name__ == '__main__':
     # db._drop_table()
+    db._reset_send()
     ...

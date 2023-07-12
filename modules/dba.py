@@ -15,11 +15,11 @@ class TicketData:
             INSERT INTO ticket
             (ticket_id, status, designee,
             policy, created_at, periodic_expires,
-            resolution_expires)
+            resolution_expires, send)
             VALUES
             ('{id}', '{status}', '{designee}',
             '{policy}','{created_at}', '{periodic_expires}',
-            '{resolution_expires}')
+            '{resolution_expires}', '0')
         """)
 
     def update_ticket(self,
@@ -41,6 +41,13 @@ class TicketData:
             WHERE ticket_id = '{id}'
         """)
 
+    def add_send(self, id: str) -> None:
+        send = db.query(f'SELECT send FROM ticket WHERE ticket_id = "{id}"')
+        if send:
+            db.execute(
+                f'UPDATE ticket SET send = {send[0][0] + 1} '
+                f'WHERE ticket_id = "{id}"')
+
     def verify_ticket(self, id):
         result = db.query(f"""
             SELECT ticket_id FROM ticket
@@ -48,26 +55,34 @@ class TicketData:
         """)
         return bool(result)
 
-    def get_new(self, time: str) -> list | None:
+    def new_sla(self, time: str) -> list:
         result = db.query(f"""
-            SELECT ticket_id FROM ticket
-            WHERE created_at <= DATETIME('now', 'localtime', '{time}')
-            AND status = 'New'
+            SELECT ticket_id, send FROM ticket
+            WHERE created_at >= DATETIME('now', 'localtime', '-{time}')
         """)
         if result:
             return result
-        return None
+        return []
 
-    def get_sla(self, time_p: str, time_r: str) -> list | None:
+    def resolution_sla(self, time: str) -> list:
         result = db.query(f"""
-            SELECT ticket_id FROM ticket
-            WHERE periodic_expires <= DATETIME('now', 'localtime', '{time_p}')
+            SELECT ticket_id, send FROM ticket
+            WHERE resolution_expires <= DATETIME('now', 'localtime', '{time}')
             AND NOT ticket_id = '4937'
         """)
-        # OR resolution_expires <= DATETIME('now', 'localtime', '{time_r}')
         if result:
             return result
-        return None
+        return []
+
+    def periodic_sla(self, time: str) -> list:
+        result = db.query(f"""
+            SELECT ticket_id, send FROM ticket
+            WHERE periodic_expires <= DATETIME('now', 'localtime', '{time}')
+            AND NOT ticket_id = '4937'
+        """)
+        if result:
+            return result
+        return []
 
 
 td = TicketData()

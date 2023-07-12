@@ -24,23 +24,34 @@ class MLDTicketQueue:
             self.add_ticket(mld_ticket)
             # break
 
-    def send_one_ticket(self, id) -> None:
-        ticket = [ticket for ticket in self.tickets if str(ticket.id) == id]
+    async def send_ticket(self, id: str, resolution: bool = False) -> None:
+        ticket = [
+            ticket for ticket in self.tickets
+            if str(ticket.id) == str(id)]
+        print('send ticket alcançado')
+        print(ticket)
         if ticket:
-            ticket[0].send_metrics_message()
-            ...
+            ticket[0].send_metrics_message(resolution)
 
-    def check_tickets_sla(self) -> None:
-        first_check = td.get_sla('30 minutes', '1 hour')
-        if first_check is not None:
-            for ticket_id in first_check:
-                self.send_one_ticket(ticket_id[0])
+    async def check_new_sla(self) -> None:
+        response = td.new_sla('10 minutes')
+        for ticket in response:
+            await self.process_ticket(ticket[0], ticket[1])
 
-    def check_tickets_new(self):
-        first_check = td.get_new('20 minutes')
-        if first_check is not None:
-            for ticket_id in first_check:
-                self.send_one_ticket(ticket_id[0])
+    async def check_resolution_sla(self) -> None:
+        response = td.resolution_sla('1 hour')
+        for ticket in response:
+            await self.process_ticket(ticket[0], ticket[1], True)
+
+    async def check_periodic_sla(self) -> None:
+        response = td.periodic_sla('30 minutes')
+        for ticket in response:
+            await self.process_ticket(ticket[0], ticket[1])
+
+    async def process_ticket(self, ticket: str, send: int, res: bool = False):
+        td.add_send(ticket)
+        if send % 2 == 0:
+            await self.send_ticket(ticket, res)
 
 
 ticket_queue = MLDTicketQueue()

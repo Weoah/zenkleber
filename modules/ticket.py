@@ -50,7 +50,6 @@ class MLDTicket:
         self.sla_first: str = 'Resolvido!'
 
         # Time to expire resolution
-        self.expires_resolution: datetime | None = None
         self.sla_resolution: str = 'Sem SLA'
         self.requester_wait: str | datetime = 'Sem SLA'
 
@@ -59,9 +58,9 @@ class MLDTicket:
         self.sla_periodic: str = 'Sem SLA'
 
         self.__get_metrics()
-        self.__sla_periodic_expires()
-        self.__sla_resolution_expires()
         self.__sla_first_expires()
+        self.__sla_resolution_expires()
+        self.__sla_periodic_expires()
 
         # Assigned user to ticket
         self.assigned_to = 'Ninguém'
@@ -77,23 +76,27 @@ class MLDTicket:
     def __repr__(self) -> str:
         return f'MLDTicket(#{self.id})'
 
-    def send_metrics_message(self) -> None:
-        chat = self.__chat_message()
-        message = self.__generate_message(chat)
+    def send_metrics_message(self, resolution=False) -> None:
+        if isinstance(self.requester_wait, str) \
+                and resolution:
+            return
+        chat = self._chat_message()
+        message = self.__generate_message()
         logger.info(f'Enviando mensagem para {chat}\n{message}')
-        send_message(chat, message)
         send_message('#zenkleber', message)
+        send_message(chat, message)
 
-    def __generate_message(self, mention: str) -> str:
+    def __generate_message(self) -> str:
         updated_at = self.updated_at.strftime("%H:%M - %d/%m")
+        mention = self._chat_mention()
         message = (
             f'*Ticket ID:* _#{self.id}_\n'
             f'*Status:* _{self.status}_\n'
-            f'*Atribuído a:* _{self.assigned_to}_ <{mention}> :pride:\n\n'
+            f'*Atribuído a:* _{self.assigned_to}_ :pride: <{mention}>\n\n'
             f'*Ultima Atualização:* _{updated_at}_\n'
             f'*SLA 1º Resposta Expira em:* _{self.__first_expire()}_\n'
             f'*SLA Resolução Expira em:* _{self.__resolut_expire()}_\n'
-            f'*SLA Periódica Expira em:* _{self.__periodic_expire()}_\n\n'
+            f'*SLA Atualização Expira em:* _{self.__periodic_expire()}_\n\n'
             f'*Assunto:* _{self.subject}_\n'
             f'*Solicitante:* _{self.requester}_\n'
             f'*Ultimo comentário de:* {self.last_comment}\n\n\n'
@@ -101,7 +104,21 @@ class MLDTicket:
             f'*-------------------------------------------------------------*')
         return message
 
-    def __chat_message(self) -> str:
+    def _chat_mention(self) -> str:
+        mention = self._chat_message()
+        sla_periodic = self.sla_periodic.split(':')
+        sla_resolution = self.sla_resolution.split(':')
+        time = ['11', '10', '09', '08', '07',
+                '06', '05', '04', '03', '02', '01']
+        if len(sla_periodic) >= 2:
+            if sla_periodic[1] in time:
+                mention = '!here'
+        elif len(sla_resolution) >= 2:
+            if sla_resolution[1] in time:
+                mention = '!here'
+        return mention
+
+    def _chat_message(self) -> str:
         # return '@jcristofaro'
         match self.assigned_to:
             case 'Flávio Fraga':
@@ -125,7 +142,7 @@ class MLDTicket:
             case 'Gabriel Martins':
                 return self.__chat_message_comment()
             case _:
-                return '#controle-de-tráfego'
+                return '#zenkleber'
 
     def __chat_message_comment(self):
         match self.last_public_person:
@@ -146,7 +163,7 @@ class MLDTicket:
             case 'Renan Medeiros':
                 return '@rmedeiros'
             case _:
-                return '#controle-de-tráfego'
+                return '#zenkleber'
 
     def _verify_ticket(self) -> None:
         verify = td.verify_ticket(self.id)
@@ -239,9 +256,8 @@ class MLDTicket:
                 run(policy['stage'], policy['breach_at'])
 
     def _periodic_update_time(self, status, time):
-        if status != 'paused' \
-                and isinstance(time, str):
-            time_format = datetime.fromisoformat(time)
+        if status != 'paused':
+            time_format = datetime.fromisoformat(str(time))
             self.periodic_update = datetime.fromtimestamp(
                 time_format.timestamp())
 
@@ -249,9 +265,13 @@ class MLDTicket:
         if status == 'paused':
             self.requester_wait = 'Pausado!'
             return
-        time_format = datetime.fromisoformat(time)
-        self.requester_wait = datetime.fromtimestamp(
-            time_format.timestamp())
+        time_format = datetime.fromisoformat(str(time))
+        neg = time_format.timestamp() - datetime.now().timestamp()
+        if neg <= 0:
+            self.sla_resolution = 'SLA Violado!'
+        else:
+            self.requester_wait = datetime.fromtimestamp(
+                time_format.timestamp())
 
     def __sla_first_expires(self) -> None:
         if self.created_at is not None \
@@ -262,11 +282,7 @@ class MLDTicket:
     def __sla_resolution_expires(self) -> None:
         if not isinstance(self.requester_wait, str):
             time_now = abs(self.requester_wait - datetime.now())
-            neg = (self.requester_wait.timestamp() -
-                   datetime.now().timestamp())
             self.sla_resolution = str(time_now).split('.')[0]
-            if neg <= 0:
-                self.sla_resolution = 'SLA Violado!'
 
     def __sla_periodic_expires(self) -> None:
         if not isinstance(self.periodic_update, str):
