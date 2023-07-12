@@ -4,7 +4,7 @@ from zenpy import Zenpy
 from zenpy.lib.api_objects import Ticket, User
 
 from modules import request_api
-from modules.slack import send_message
+from modules.slack import send_message, edit_message
 from modules.logger import logger
 from modules.dba import td
 
@@ -43,7 +43,7 @@ class MLDTicket:
         # Last ticket response
         self.updated_at: datetime
         self.last_comment = self.__get_last_comment()
-        self.last_public_person: str
+        self.updated_by: str
 
         # Time to expire first response
         self.expires_first: datetime | None = None
@@ -83,8 +83,13 @@ class MLDTicket:
         chat = self._chat_message()
         message = self.__generate_message()
         logger.info(f'Enviando mensagem para {chat}\n{message}')
-        send_message('#zenkleber', message)
+        send_message('#zenkleber', message, self.id)
         send_message(chat, message)
+
+    def edit_metrics_message(self):
+        message = self.__update_message()
+        logger.info(f'Editando a mensagem - {message}')
+        edit_message(self.id, message)
 
     def __generate_message(self) -> str:
         updated_at = self.updated_at.strftime("%H:%M - %d/%m")
@@ -104,6 +109,12 @@ class MLDTicket:
             f'*-------------------------------------------------------------*')
         return message
 
+    def __update_message(self) -> str:
+        updated_at = self.updated_at.strftime("%H:%M - %d/%m")
+        update = f'_{updated_at} atualizado por {self.updated_by}_'
+        message = f'*Ticket #{self.id}* | {update} :white_check_mark:'
+        return message
+
     def _chat_mention(self) -> str:
         mention = self._chat_message()
         sla_periodic = self.sla_periodic.split(':')
@@ -121,7 +132,7 @@ class MLDTicket:
         return mention
 
     def _chat_message(self) -> str:
-        # return '@jcristofaro'
+        return '@jcristofaro'
         match self.assigned_to:
             case 'Flávio Fraga':
                 return '@ffraga'
@@ -147,7 +158,7 @@ class MLDTicket:
                 return '#zenkleber'
 
     def __chat_message_comment(self):
-        match self.last_public_person:
+        match self.updated_by:
             case 'Flávio Fraga':
                 return '@ffraga'
             case 'Gabriel Lunardelli':
@@ -236,7 +247,7 @@ class MLDTicket:
             comment = comments[comments_len:][0]  # type:ignore
             count += 1
         self.updated_at = datetime.fromtimestamp(comment.created.timestamp())
-        self.last_public_person = comment.author.name
+        self.updated_by = comment.author.name
         return f'_{comment.author.name}_\n\n{comment.body[:300]}'
 
     def __sla_policy(self) -> str:
