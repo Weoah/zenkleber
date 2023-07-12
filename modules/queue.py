@@ -28,8 +28,6 @@ class MLDTicketQueue:
         ticket = [
             ticket for ticket in self.tickets
             if str(ticket.id) == str(id)]
-        print('send ticket alcançado')
-        print(ticket)
         if ticket:
             ticket[0].send_metrics_message(resolution)
 
@@ -50,8 +48,12 @@ class MLDTicketQueue:
 
     async def process_ticket(self, ticket: str, send: int, res: bool = False):
         td.add_send(ticket)
+        if res:
+            if send % 8 == 0:
+                await self.send_ticket(ticket, res)
+            return
         if send % 2 == 0:
-            await self.send_ticket(ticket, res)
+            await self.send_ticket(ticket)
 
 
 ticket_queue = MLDTicketQueue()

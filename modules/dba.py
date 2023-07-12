@@ -59,6 +59,7 @@ class TicketData:
         result = db.query(f"""
             SELECT ticket_id, send FROM ticket
             WHERE created_at >= DATETIME('now', 'localtime', '-{time}')
+            AND (status = 'New' OR designee = 'Ninguém')
         """)
         if result:
             return result

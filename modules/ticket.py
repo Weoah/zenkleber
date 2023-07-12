@@ -256,8 +256,9 @@ class MLDTicket:
                 run(policy['stage'], policy['breach_at'])
 
     def _periodic_update_time(self, status, time):
-        if status != 'paused':
-            time_format = datetime.fromisoformat(str(time))
+        if status != 'paused' \
+                and isinstance(time, str):
+            time_format = datetime.fromisoformat(time)
             self.periodic_update = datetime.fromtimestamp(
                 time_format.timestamp())
 
@@ -265,13 +266,14 @@ class MLDTicket:
         if status == 'paused':
             self.requester_wait = 'Pausado!'
             return
-        time_format = datetime.fromisoformat(str(time))
-        neg = time_format.timestamp() - datetime.now().timestamp()
-        if neg <= 0:
-            self.sla_resolution = 'SLA Violado!'
-        else:
-            self.requester_wait = datetime.fromtimestamp(
-                time_format.timestamp())
+        if isinstance(time, str):
+            time_format = datetime.fromisoformat(time)
+            neg = time_format.timestamp() - datetime.now().timestamp()
+            if neg <= 0:
+                self.sla_resolution = 'SLA Violado!'
+            else:
+                self.requester_wait = datetime.fromtimestamp(
+                    time_format.timestamp())
 
     def __sla_first_expires(self) -> None:
         if self.created_at is not None \
