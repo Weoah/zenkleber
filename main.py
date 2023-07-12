@@ -21,9 +21,9 @@ async def check_periodic():
 
 async def main():
     logger.info('Executando uma repeticao...\n')
-    ticket_queue.get_tickets()
-    # new = asyncio.create_task(check_new())
-    # await new
+    await ticket_queue.get_tickets()
+    new = asyncio.create_task(check_new())
+    await new
     resolution = asyncio.create_task(check_resolution())
     await resolution
     periodic = asyncio.create_task(check_periodic())

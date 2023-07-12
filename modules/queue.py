@@ -17,7 +17,7 @@ class MLDTicketQueue:
         if ticket not in self.tickets:
             self.tickets.append(ticket)
 
-    def get_tickets(self) -> None:
+    async def get_tickets(self) -> None:
         self.tickets.clear()
         for ticket in session.search(**SEARCH_TICKET):  # type: ignore
             mld_ticket = MLDTicket(ticket, session)  # type: ignore
