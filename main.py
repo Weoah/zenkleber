@@ -50,7 +50,7 @@ async def main():
     update_periodic = asyncio.create_task(update_periodic_())
     await update_periodic
     logger.info('Finalizando uma repeticao...\n')
-    await asyncio.sleep(300)
+    await asyncio.sleep(30)
 
 if __name__ == "__main__":
 
