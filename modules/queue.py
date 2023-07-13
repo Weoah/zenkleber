@@ -6,6 +6,10 @@ from modules.config import SEARCH_TICKET
 from modules.ticket import MLDTicket
 from modules.dba import td
 
+NEW_PERIOD = '10 MINUTES'
+RESOLUTION_PERIOD = '1 HOUR'
+PERIODIC_PERIOD = '30 MINUTES'
+
 
 class MLDTicketQueue:
 
@@ -21,28 +25,37 @@ class MLDTicketQueue:
         for ticket in session.search(**SEARCH_TICKET):  # type: ignore
             mld_ticket = MLDTicket(ticket, session)  # type: ignore
             self.add_ticket(mld_ticket)
-            # break
+            break
 
-    async def send_ticket(self, id: str, resolution: bool = False) -> None:
+    async def send_ticket(self, id: str, res: bool = False) -> None:
         ticket = [
             ticket for ticket in self.tickets
-            if str(ticket.id) == str(id)]
+            if str(ticket.id_) == str(id)]
         if ticket:
-            ticket[0].send_metrics_message(resolution)
+            await ticket[0].send_metrics_message(res)
 
     async def check_new_sla(self) -> None:
-        response = td.new_sla('10 minutes')
+        response = td.new_sla(NEW_PERIOD)
         for ticket in response:
+            if ticket[2] is not None:
+                await self.update_unsolved_ticket(ticket[0])
+                return
             await self.process_ticket(ticket[0], ticket[1])
 
     async def check_resolution_sla(self) -> None:
-        response = td.resolution_sla('1 hour')
+        response = td.resolution_sla(RESOLUTION_PERIOD)
         for ticket in response:
+            if ticket[2] is not None:
+                await self.update_unsolved_ticket(ticket[0], True)
+                return
             await self.process_ticket(ticket[0], ticket[1], True)
 
     async def check_periodic_sla(self) -> None:
-        response = td.periodic_sla('30 minutes')
+        response = td.periodic_sla(PERIODIC_PERIOD)
         for ticket in response:
+            if ticket[2] is not None:
+                await self.update_unsolved_ticket(ticket[0])
+                return
             await self.process_ticket(ticket[0], ticket[1])
 
     async def process_ticket(self, ticket: str, send: int, res: bool = False):
@@ -55,26 +68,35 @@ class MLDTicketQueue:
             await self.send_ticket(ticket)
 
     async def update_new(self) -> None:
-        response = td.new_sla_update('10 minutes')
+        response = td.new_sla_update(NEW_PERIOD)
         for ticket in response:
             await self.update_ticket(ticket[0])
 
     async def update_resolution(self) -> None:
-        response = td.resolution_sla_update('1 hour')
+        response = td.resolution_sla_update(RESOLUTION_PERIOD)
         for ticket in response:
             await self.update_ticket(ticket[0])
 
     async def update_periodic(self) -> None:
-        response = td.periodic_sla_update('30 minutes')
+        response = td.periodic_sla_update(PERIODIC_PERIOD)
         for ticket in response:
             await self.update_ticket(ticket[0])
 
     async def update_ticket(self, id) -> None:
         ticket = [
             ticket for ticket in self.tickets
-            if str(ticket.id) == str(id)]
-        if ticket:
-            ticket[0].edit_metrics_message()
+            if str(ticket.id_) == str(id)]
+        if not ticket:
+            return
+        await ticket[0].edit_metrics_message()
+
+    async def update_unsolved_ticket(self, id: str, res: bool = False) -> None:
+        ticket = [
+            ticket for ticket in self.tickets
+            if str(ticket.id_) == str(id)]
+        if not ticket:
+            return
+        await ticket[0].edit_unsolved_message(res)
 
 
 ticket_queue = MLDTicketQueue()

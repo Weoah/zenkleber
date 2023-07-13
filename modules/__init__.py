@@ -17,4 +17,17 @@ def request_api(url: str):
     return response.json()
 
 
+def show_message(func):
+    def decorator(*args, **kwargs):
+        print('\nExecutando:', func.__name__)
+        try:
+            print('\n', *args, **kwargs)
+        except TypeError:
+            ...
+        result = func(*args, **kwargs)
+        print('\nConcluída:', func.__name__)
+        return result
+    return decorator
+
+
 session = start_session()
