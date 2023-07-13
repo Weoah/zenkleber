@@ -3,6 +3,9 @@ from modules._db import db
 
 class TicketData:
 
+    def __repr__(self) -> str:
+        return 'TicketData'
+
     def store_ticket(self,
                      id,
                      status,

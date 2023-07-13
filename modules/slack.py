@@ -1,3 +1,4 @@
+from datetime import datetime
 from slack.web.client import WebClient
 
 from modules.config import SLACK_TOKEN
@@ -45,7 +46,15 @@ def check_to_send(id: str, chat: str, message: str, res: bool = False) -> None:
     if send:
         if res and send[0][0] % 8 == 0:
             send_message(chat=chat, message=message)
-            return
-        if send[0][0] % 2 == 0:
+        if not res and send[0][0] % 2 == 0:
             send_message(chat=chat, message=message)
-            return
+
+
+def send_solved_message(id: str, time: str) -> None:
+    result = td.last_message(id)
+    time_format = datetime.fromisoformat(time)
+    timestamp = datetime.fromtimestamp(time_format.timestamp())
+    new_time = timestamp.strftime("%H:%M - %d/%m")
+    message = f'*Ticket #{id}* | _{new_time} #RESOLVIDO_ :catjam:'
+    if result:
+        client.chat_update(channel=result[0][0], ts=result[0][1], text=message)

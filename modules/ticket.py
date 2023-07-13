@@ -150,6 +150,8 @@ class MLDTicket:
                 return self.__chat_message_comment()
             case 'Gabriel Martins':
                 return self.__chat_message_comment()
+            case 'Ninguém':
+                return '@acarvalho'
             case _:
                 return '#zenkleber'
 
