@@ -75,10 +75,10 @@ class Database:
         """)
 
     def _drop_table(self):
-        self.execute("""DROP TABLE ticket""")
+        self.execute("DROP TABLE ticket")
 
     def _reset_send(self):
-        self.execute("""UPDATE ticket SET send = '0' WHERE id >= 1""")
+        self.execute("UPDATE ticket SET send = '0' WHERE id >= 1")
 
 
 db = Database()

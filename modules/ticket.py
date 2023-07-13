@@ -4,7 +4,7 @@ from zenpy import Zenpy
 from zenpy.lib.api_objects import Ticket, User
 
 from modules import request_api
-from modules.slack import send_message, edit_message
+from modules.slack import send_message, edit_message, edit_message_unsolved
 from modules.logger import logger
 from modules.dba import td
 
@@ -16,7 +16,7 @@ class MLDTicket:
         self.assigned: User = ticket.assignee  # type:ignore
 
         # Ticket ID
-        self.id = ticket.id
+        self.id_ = ticket.id
 
         # Ticket URL
         self.url = 'https://mundolivredigital.zendesk.com'
@@ -74,29 +74,34 @@ class MLDTicket:
         # self.send_metrics_message()
 
     def __repr__(self) -> str:
-        return f'MLDTicket(#{self.id})'
+        return f'MLDTicket(#{self.id_})'
 
-    def send_metrics_message(self, resolution=False) -> None:
+    async def send_metrics_message(self, resolution=False) -> None:
         if isinstance(self.requester_wait, str) \
                 and resolution:
             return
         chat = self._chat_message()
         message = self.__generate_message()
         logger.info(f'Enviando mensagem para {chat}\n{message}')
-        send_message('#zenkleber', message, self.id)
+        send_message('#zenkleber', message, self.id_)
         send_message(chat, message)
 
-    def edit_metrics_message(self):
+    async def edit_unsolved_message(self, res: bool = False):
+        chat = self._chat_message()
+        message = self.__generate_message()
+        edit_message_unsolved(self.id_, message, chat, res)
+        logger.info(f'Enviando mensagem unsolved para {chat}\n{message}')
+
+    async def edit_metrics_message(self):
         message = self.__update_message()
-        result = edit_message(self.id, message)
-        if result is not None:
-            logger.info(f'Editando a mensagem - {message}')
+        edit_message(self.id_, message)
+        logger.info(f'Editando a mensagem - {message}')
 
     def __generate_message(self) -> str:
         updated_at = self.updated_at.strftime("%H:%M - %d/%m")
         mention = self._chat_mention()
         message = (
-            f'*Ticket ID:* _#{self.id}_\n'
+            f'*Ticket ID:* _#{self.id_}_\n'
             f'*Status:* _{self.status}_\n'
             f'*Atribuído a:* _{self.assigned_to}_ :pride: <{mention}>\n\n'
             f'*Ultima Atualização:* _{updated_at}_\n'
@@ -106,14 +111,14 @@ class MLDTicket:
             f'*Assunto:* _{self.subject}_\n'
             f'*Solicitante:* _{self.requester}_\n'
             f'*Ultimo comentário de:* {self.last_comment}\n\n\n'
-            f'*Acesse em:* {self.url}/agent/tickets/{self.id}\n'
+            f'*Acesse em:* {self.url}/agent/tickets/{self.id_}\n'
             f'*-------------------------------------------------------------*')
         return message
 
     def __update_message(self) -> str:
         updated_at = self.updated_at.strftime("%H:%M - %d/%m")
         update = f'_{updated_at} atualizado por {self.updated_by}_'
-        message = f'*Ticket #{self.id}* | {update} :white_check_mark:'
+        message = f'*Ticket #{self.id_}* | {update} :white_check_mark:'
         return message
 
     def _chat_mention(self) -> str:
@@ -170,7 +175,7 @@ class MLDTicket:
                 return '#zenkleber'
 
     def _verify_ticket(self) -> None:
-        verify = td.verify_ticket(self.id)
+        verify = td.verify_ticket(self.id_)
         if not verify:
             self._store_ticket()
         else:
@@ -178,14 +183,14 @@ class MLDTicket:
 
     def _store_ticket(self) -> None:
         td.store_ticket(
-            id=self.id, status=self.status, designee=self.assigned_to,
+            id=self.id_, status=self.status, designee=self.assigned_to,
             policy=self.policy, created_at=self.created_at,
             periodic_expires=self.periodic_update,
             resolution_expires=self.requester_wait)
 
     def _update_ticket(self) -> None:
         td.update_ticket(
-            id=self.id, status=self.status, designee=self.assigned_to,
+            id=self.id_, status=self.status, designee=self.assigned_to,
             policy=self.policy, created_at=self.created_at,
             periodic_expires=self.periodic_update,
             resolution_expires=self.requester_wait)
@@ -227,13 +232,14 @@ class MLDTicket:
             expire_msg = self.periodic_update
         return expire_msg
 
-    def __get_last_comment(self) -> str:
-        comments = self.session.tickets.comments(self.id)  # type:ignore
+
+    def __get_last_comment(self, update: bool = False) -> str | None:
+        comments = self.session.tickets.comments(self.id_)  # type:ignore
         count = 2
         comments_len = len(comments) - 1
         comment = comments[comments_len:][0]  # type:ignore
         while not comment.public:
-            comments = self.session.tickets.comments(self.id)  # type:ignore
+            comments = self.session.tickets.comments(self.id_)  # type:ignore
             comments_len = len(comments) - count
             comment = comments[comments_len:][0]  # type:ignore
             count += 1
@@ -252,7 +258,7 @@ class MLDTicket:
         return 'nenhuma'
 
     def __get_metrics(self):
-        url = f'{self.url}/api/v2/tickets/{self.id}?include=slas'
+        url = f'{self.url}/api/v2/tickets/{self.id_}?include=slas'
         response = request_api(url)
         for policy in response['ticket']['slas']['policy_metrics']:
             if hasattr(self, f"_{policy['metric']}"):
