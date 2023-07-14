@@ -4,53 +4,52 @@ from modules.logger import logger
 from modules.queue import ticket_queue
 
 
-async def check_new():
-    task = asyncio.create_task(ticket_queue.check_new_sla())
+async def task_check_new():
+    task = asyncio.create_task(ticket_queue.get_new_tickets())
     await task
 
 
-async def update_new_():
-    task = asyncio.create_task(ticket_queue.update_new())
+async def task_update_new():
+    task = asyncio.create_task(ticket_queue.update_new_tickets())
     await task
 
 
-async def check_resolution():
-    task = asyncio.create_task(ticket_queue.check_resolution_sla())
+async def task_check_resolution():
+    task = asyncio.create_task(ticket_queue.get_resolution_metric_tickets())
     await task
 
 
-async def update_resolution_():
-    task = asyncio.create_task(ticket_queue.update_resolution())
+async def task_update_resolution():
+    task = asyncio.create_task(ticket_queue.update_resolution_metric_tickets())
     await task
 
 
-async def check_periodic():
-    task = asyncio.create_task(ticket_queue.check_periodic_sla())
+async def task_check_periodic():
+    task = asyncio.create_task(ticket_queue.get_periodic_metric_tickets())
     await task
 
 
-async def update_periodic_():
-    task = asyncio.create_task(ticket_queue.update_periodic())
+async def task_update_periodic():
+    task = asyncio.create_task(ticket_queue.update_periodic_metric_tickets())
     await task
 
 
 async def main():
     logger.info('Executando uma repeticao...\n')
-    await ticket_queue.get_tickets()
-    new = asyncio.create_task(check_new())
+    new = asyncio.create_task(task_check_new())
     await new
-    update_new = asyncio.create_task(update_new_())
+    update_new = asyncio.create_task(task_update_new())
     await update_new
-    resolution = asyncio.create_task(check_resolution())
-    await resolution
-    update_resolution = asyncio.create_task(update_resolution_())
-    await update_resolution
-    periodic = asyncio.create_task(check_periodic())
+    periodic = asyncio.create_task(task_check_periodic())
     await periodic
-    update_periodic = asyncio.create_task(update_periodic_())
+    update_periodic = asyncio.create_task(task_update_periodic())
     await update_periodic
+    resolution = asyncio.create_task(task_check_resolution())
+    await resolution
+    update_resolution = asyncio.create_task(task_update_resolution())
+    await update_resolution
     logger.info('Finalizando uma repeticao...\n')
-    await asyncio.sleep(30)
+    await asyncio.sleep(200)
 
 if __name__ == "__main__":
 

@@ -4,20 +4,20 @@ from zenpy import Zenpy
 from modules.config import CREDENTIALS
 
 
-def start_session() -> Zenpy:
+def start_zendesk_session() -> Zenpy:
     session = Zenpy(**CREDENTIALS)  # type: ignore
     if not session:
         raise SystemError("Zenpy Session not finded")
     return session
 
 
-def request_api(url: str):
+def request_zendesk_api(url: str):
     response = requests.get(url, auth=(
         CREDENTIALS['email'], CREDENTIALS['password']))
     return response.json()
 
 
-def show_message(func):
+def show_debug_message(func):
     def decorator(*args, **kwargs):
         print('\nExecutando:', func.__name__)
         try:
@@ -30,4 +30,4 @@ def show_message(func):
     return decorator
 
 
-session = start_session()
+session = start_zendesk_session()

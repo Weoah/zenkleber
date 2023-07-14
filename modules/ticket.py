@@ -3,8 +3,9 @@ from datetime import datetime
 from zenpy import Zenpy
 from zenpy.lib.api_objects import Ticket, User
 
-from modules import request_api
-from modules.slack import send_message, edit_message, edit_message_unsolved
+from modules import request_zendesk_api
+from modules.slack import (
+    slack_send_message, slack_edit_message, slack_edit_message_unsolved)
 from modules.logger import logger
 from modules.dba import td
 
@@ -58,9 +59,9 @@ class MLDTicket:
         self.sla_periodic: str = 'Sem SLA'
 
         self.__get_metrics()
-        self.__sla_first_expires()
-        self.__sla_resolution_expires()
-        self.__sla_periodic_expires()
+        self.__first_message_metric()
+        self.__resolution_metric()
+        self.__periodic_metric()
 
         # Assigned user to ticket
         self.assigned_to = 'Ninguém'
@@ -83,18 +84,18 @@ class MLDTicket:
         chat = self._chat_message()
         message = self.__generate_message()
         logger.info(f'Enviando mensagem para {chat}\n{message}')
-        send_message('#zenkleber', message, self.id_)
-        send_message(chat, message)
+        slack_send_message('#zenkleber', message, self.id_)
+        slack_send_message(chat, message)
 
     async def edit_unsolved_message(self, res: bool = False):
         chat = self._chat_message()
         message = self.__generate_message()
-        edit_message_unsolved(self.id_, message, chat, res)
+        slack_edit_message_unsolved(self.id_, message, chat, res)
         logger.info(f'Enviando mensagem unsolved para {chat}\n{message}')
 
     async def edit_metrics_message(self):
         message = self.__update_message()
-        edit_message(self.id_, message)
+        slack_edit_message(self.id_, message)
         logger.info(f'Editando a mensagem - {message}')
 
     def __generate_message(self) -> str:
@@ -124,7 +125,7 @@ class MLDTicket:
     def _chat_mention(self) -> str:
         mention = self._chat_message()
         if self.assigned_to == 'Ninguém':
-            mention = '!here'
+            mention = '@acarvalho'
         return mention
 
     def _chat_message(self) -> str:
@@ -177,7 +178,7 @@ class MLDTicket:
                 return '#zenkleber'
 
     def _verify_ticket(self) -> None:
-        verify = td.verify_ticket(self.id_)
+        verify = td.verify_ticket_stored(self.id_)
         if not verify:
             self._store_ticket()
         else:
@@ -234,7 +235,6 @@ class MLDTicket:
             expire_msg = self.periodic_update
         return expire_msg
 
-
     def __get_last_comment(self, update: bool = False) -> str | None:
         comments = self.session.tickets.comments(self.id_)  # type:ignore
         count = 2
@@ -247,6 +247,8 @@ class MLDTicket:
             count += 1
         self.updated_at = datetime.fromtimestamp(comment.created.timestamp())
         self.updated_by = comment.author.name
+        if update:
+            return None
         return f'_{comment.author.name}_\n\n{comment.body[:300]}'
 
     def __sla_policy(self) -> str:
@@ -261,7 +263,7 @@ class MLDTicket:
 
     def __get_metrics(self):
         url = f'{self.url}/api/v2/tickets/{self.id_}?include=slas'
-        response = request_api(url)
+        response = request_zendesk_api(url)
         for policy in response['ticket']['slas']['policy_metrics']:
             if hasattr(self, f"_{policy['metric']}"):
                 run = getattr(self, f"_{policy['metric']}")
@@ -287,18 +289,18 @@ class MLDTicket:
                 self.requester_wait = datetime.fromtimestamp(
                     time_format.timestamp())
 
-    def __sla_first_expires(self) -> None:
+    def __first_message_metric(self) -> None:
         if self.created_at is not None \
                 and self.expires_first is not None:
             time_now = abs(self.expires_first - datetime.now())
             self.sla_first = str(time_now).split('.')[0]
 
-    def __sla_resolution_expires(self) -> None:
+    def __resolution_metric(self) -> None:
         if not isinstance(self.requester_wait, str):
             time_now = abs(self.requester_wait - datetime.now())
             self.sla_resolution = str(time_now).split('.')[0]
 
-    def __sla_periodic_expires(self) -> None:
+    def __periodic_metric(self) -> None:
         if not isinstance(self.periodic_update, str):
             time_now = abs(self.periodic_update - datetime.now())
             neg = self.periodic_update.timestamp() - datetime.now().timestamp()
