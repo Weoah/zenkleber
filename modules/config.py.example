@@ -4,5 +4,10 @@ CREDENTIALS = {
     "password": "",
     "subdomain": ""}
 
+# Ticket status to being searched
+SEARCH_TICKET = {
+    "type": 'ticket',
+    "status": ["new", "open", "pending", "hold"]}
+
 # Slack BOT OAuth Token
 SLACK_TOKEN = ""
