@@ -44,9 +44,9 @@ def check_to_send(id: str, chat: str, message: str, res: bool = False) -> None:
     send = td.get_send_message(id, res)
     td.add_send_message(id)
     if send:
-        if res and send[0][0] % 8 == 0:
+        if res and send[0][0] % 15 == 0:
             slack_send_message(chat=chat, message=message)
-        if not res and send[0][0] % 2 == 0:
+        if not res and send[0][0] % 3 == 0:
             slack_send_message(chat=chat, message=message)
 
 

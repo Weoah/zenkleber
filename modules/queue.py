@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import List
 
+from modules.config import SEARCH_TICKET
 from modules import session, request_zendesk_api
 from modules.slack import slack_send_solved_message
 from modules.ticket import MLDTicket
@@ -23,9 +24,11 @@ class MLDTicketQueue:
         if ticket not in self.tickets:
             self.tickets.append(ticket)
 
-    async def get_tickets(self, get: dict) -> None:
+    async def get_tickets(self) -> None:
         self.tickets.clear()
-        for ticket in session.search(**get):  # type: ignore
+        for ticket in session.search(**SEARCH_TICKET):  # type: ignore
+            if ticket.id == 4937:  # type: ignore
+                continue
             mld_ticket = MLDTicket(ticket, session)  # type: ignore
             self.add_ticket(mld_ticket)
 
@@ -33,7 +36,6 @@ class MLDTicketQueue:
         response = td.verify_new_tickets(NEW_PERIOD)
         if not response:
             return
-        await self.get_tickets({"type": 'ticket',  "status": "new"})
         for ticket in response:
             if ticket[2] is None or ticket[2] == 'None':
                 await self.ticket_interval(ticket[0], ticket[1])
@@ -51,7 +53,6 @@ class MLDTicketQueue:
         response = td.verify_metric_resolution(RESOLUTION_PERIOD)
         if not response:
             return
-        await self.get_tickets({"type": "ticket",  "status": ["open", "hold"]})
         for ticket in response:
             if ticket[2] is None or ticket[2] == 'None':
                 await self.ticket_interval(ticket[0], ticket[1], True)
@@ -69,8 +70,6 @@ class MLDTicketQueue:
         response = td.verify_metric_periodic(PERIODIC_PERIOD)
         if not response:
             return
-        await self.get_tickets(
-            {"type": "ticket",  "status": ["open", "hold", "pending"]})
         for ticket in response:
             if ticket[2] is None or ticket[2] == 'None':
                 await self.ticket_interval(ticket[0], ticket[1])
@@ -113,13 +112,16 @@ class MLDTicketQueue:
             ticket for ticket in self.tickets
             if str(ticket.id_) == str(id)]
         if not ticket:
-            url = 'https://mundolivredigital.zendesk.com/api/v2/tickets/'
-            request = request_zendesk_api(f'{url}{id}')
-            if request['ticket']['status'] == 'solved':
-                slack_send_solved_message(
-                    request['ticket']['id'], request['ticket']['updated_at'])
+            await self.send_solved_message(str(id))
             return
         await ticket[0].edit_unsolved_message(res)
+
+    async def send_solved_message(self, id: str) -> None:
+        url = 'https://mundolivredigital.zendesk.com/api/v2/tickets/'
+        request = request_zendesk_api(f'{url}{id}')
+        if request['ticket']['status'] == 'solved':
+            slack_send_solved_message(
+                request['ticket']['id'], request['ticket']['updated_at'])
 
 
 ticket_queue = MLDTicketQueue()

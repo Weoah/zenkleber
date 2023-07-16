@@ -36,6 +36,7 @@ async def task_update_periodic():
 
 async def main():
     logger.info('Executando uma repeticao...\n')
+    await ticket_queue.get_tickets()
     new = asyncio.create_task(task_check_new())
     await new
     update_new = asyncio.create_task(task_update_new())
