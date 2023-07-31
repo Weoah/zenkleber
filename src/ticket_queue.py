@@ -51,7 +51,7 @@ class MLDTicketQueue:
             ticket.ticket_edit_message()
 
     def status(self, id) -> tuple:
-        request = request_zendesk(f'{ZENDESK_DOMAIN}/api/v2/tickets/{id}')
+        request = request_zendesk(f'api/v2/tickets/{id}')
         return (request['status'], request['updated_at'])
 
     def end_message(self, id) -> None:
