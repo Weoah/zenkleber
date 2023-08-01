@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import List
 
 from src import zendesk_session, request_zendesk
-from src.config import SEARCH_TICKET, BLOCKED_TICKETS, PERIODS, ZENDESK_DOMAIN
+from src.config import SEARCH_TICKET, BLOCKED_TICKETS, PERIODS
 from src.db import db
 from src.slack import slack
 from src.ticket import MLDTicket

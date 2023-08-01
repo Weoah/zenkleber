@@ -206,7 +206,7 @@ class MLDTicket(TicketSLA):
             message = f'{expires} ({expire})'
         return message
 
-    def main_message(self):
+    def ticket_message(self):
         message = (
             f'*Ticket ID:* _#{self.id}_\n'
             f'*Status:* _{self.status}_\n'
@@ -232,18 +232,16 @@ class MLDTicket(TicketSLA):
         if isinstance(self.requester_wait_time, str) and wait:
             return
         chat = self.chat()
-        message = self.main_message()
+        message = self.ticket_message()
         slack.send_message(SLACK_OPEN_CHANNEL, message, self.id)
         if chat is not None:
-            chat = '@jcristofaro'
             slack.send_message(chat, message, None)
 
     def ticket_update_message(self, wait: bool) -> None:
         chat = self.chat()
         if chat is None:
             return
-        message = self.main_message()
-        log.info(f'sending unsolved message para {chat}\n{message[:300]}\n')
+        message = self.ticket_message()
         slack.update_message(self.id, chat, message, wait)
 
     def ticket_edit_message(self):

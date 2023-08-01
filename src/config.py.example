@@ -2,20 +2,20 @@
 ZENDESK_DOMAIN: str = "https://domainexample.zendesk.com"
 
 # Login Credentials. Subdomain must be https subdomain
-ZENDESK_CREDENTIALS: dict = {
+ZENDESK_CREDENTIALS: dict[str, str] = {
     "email": "",
     "password": "",
     "subdomain": "domainexample"}
 
 # Zendesk Collaborator: Slack mark, If Slack mark setted with None,
 # Bot will notificate the person that sended last update message
-COLLABORATORS: dict = {
+COLLABORATORS: dict[str, str | None] = {
     "Person One": "@personone",
     "Person Two": "@persontwo",
     "Person Three": None}
 
 # Ticket searching metric
-SEARCH_TICKET: dict = {
+SEARCH_TICKET: dict[str, str | list[str]] = {
     "type": 'ticket',
     "status": ["new", "open", "pending", "hold"]}
 
@@ -23,7 +23,7 @@ SEARCH_TICKET: dict = {
 BLOCKED_TICKETS: list[int] = []
 
 # Time to expire some metric
-PERIODS: dict = {
+PERIODS: dict[str, str] = {
     "NEW": "20 MINUTES",
     "WAIT": "1 HOUR",
     "PERIODIC": "1 HOUR"

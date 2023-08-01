@@ -23,9 +23,6 @@ class SlackClient:
             self.send_message(chat, message)
 
     def send_message(self, chat, message, id=None) -> None:
-        print(chat)
-        if chat != '#zenkleber':
-            chat = '@jcristofaro'
         data = self.client.chat_postMessage(channel=chat, text=message)
         if id is not None:
             db.add_message(id, data['channel'], data['ts'])
