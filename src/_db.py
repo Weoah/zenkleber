@@ -14,9 +14,9 @@ class Database:
         self.lock.acquire()
         self.__connect()
         cur = self.__start()
-        cur.execute(statement)  # type:ignore
-        result = cur.fetchall()  # type:ignore
-        cur.close()  # type:ignore
+        cur.execute(statement)
+        result = cur.fetchall()
+        cur.close()
         self.__close()
         self.lock.release()
         if not result:
@@ -27,9 +27,9 @@ class Database:
         self.lock.acquire()
         self.__connect()
         cur = self.__start()
-        cur.execute(statement)  # type:ignore
+        cur.execute(statement)
         self.db.commit()
-        cur.close()  # type:ignore
+        cur.close()
         self.__close()
         self.lock.release()
         return True
@@ -62,12 +62,10 @@ class Database:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 ticket_id VARCHAR(255),
                 status VARCHAR(255),
-                designee VARCHAR(255),
-                policy VARCHAR(255),
                 created_at DATETIME,
-                periodic_expires DATETIME,
-                resolution_expires DATETIME,
-                send INTEGER,
+                sla_periodic DATETIME,
+                sla_wait DATETIME,
+                sended INTEGER,
                 edited INTEGER,
                 chat VARCHAR(255),
                 ts VARCHAR(255)
@@ -81,7 +79,7 @@ class Database:
         self.execute("UPDATE ticket SET send = '0' WHERE id >= 1")
 
 
-db = Database()
+_db = Database()
 
 if __name__ == '__main__':
     # db._drop_table()
