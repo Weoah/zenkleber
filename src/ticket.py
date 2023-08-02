@@ -207,6 +207,7 @@ class MLDTicket(TicketSLA):
         return message
 
     def ticket_message(self):
+        last_comment = f'_{self.updated_by}_\n\n{self.last_comment}'
         message = (
             f'*Ticket ID:* _#{self.id}_\n'
             f'*Status:* _{self.status}_\n'
@@ -216,10 +217,10 @@ class MLDTicket(TicketSLA):
             f'*SLA Atualização Expira em:* _{self.periodic_expire()}_\n\n'
             f'*Assunto:* _{self.subject}_\n'
             f'*Solicitante:* _{self.requester}_\n'
-            f'*Ultimo comentário de:* {self.last_comment}\n\n\n'
+            f'*Ultimo comentário de:* {last_comment}\n\n\n'
             f'*Acesse em:* {ZENDESK_DOMAIN}/agent/tickets/{self.id}\n'
             f'*-------------------------------------------------------------*')
-        log.info(f'sending message to {self.chat()}\n{message[:300]}\n')
+        log.info(f'sending message to {self.chat()}\n{message[:400]}\n')
         return message
 
     def update_message(self):
