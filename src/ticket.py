@@ -65,7 +65,8 @@ class IMLDTicket:
         if self.comments:
             count = 1
             comment = self.comments[-1]
-            while not comment.public:
+            while not comment.public \
+                    and comment.author.name not in COLLABORATORS.keys():
                 count += 1
                 comment = self.comments[-count]
             return comment
@@ -106,9 +107,7 @@ class TicketSLA(IMLDTicket):
     def metrics(self):
         url = f'api/v2/tickets/{self.id}?include=slas'
         response = request_zendesk(url)
-        if response:
-            return response['slas']['policy_metrics']
-        raise ValueError('Not possible to access Zendesk API')
+        return response['slas']['policy_metrics']
 
     def add_metrics(self):
         for metric in self.metrics():
@@ -207,6 +206,7 @@ class MLDTicket(TicketSLA):
         return message
 
     def ticket_message(self):
+        last_comment = f'_{self.updated_by}_\n\n{self.last_comment}'
         message = (
             f'*Ticket ID:* _#{self.id}_\n'
             f'*Status:* _{self.status}_\n'
@@ -216,10 +216,10 @@ class MLDTicket(TicketSLA):
             f'*SLA Atualização Expira em:* _{self.periodic_expire()}_\n\n'
             f'*Assunto:* _{self.subject}_\n'
             f'*Solicitante:* _{self.requester}_\n'
-            f'*Ultimo comentário de:* {self.last_comment}\n\n\n'
+            f'*Ultimo comentário de:* {last_comment}\n\n\n'
             f'*Acesse em:* {ZENDESK_DOMAIN}/agent/tickets/{self.id}\n'
             f'*-------------------------------------------------------------*')
-        log.info(f'sending message to {self.chat()}\n{message[:300]}\n')
+        log.info(f'sending message to {self.chat()}\n{message[:400]}\n')
         return message
 
     def update_message(self):

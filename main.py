@@ -1,29 +1,31 @@
-from time import sleep
+import asyncio
 
 from src import log
 from src.ticket_queue import queue
 
 
-def main():
-    log.info('Starting...\n')
+async def task():
+    await queue.get_tickets()
 
-    queue.get_tickets()
+    asyncio.create_task(queue.new_tickets())
+    asyncio.create_task(queue.update_new_tickets())
 
-    queue.new_tickets()
-    queue.update_new_tickets()
+    asyncio.create_task(queue.wait_tickets())
+    asyncio.create_task(queue.update_wait_tickets())
 
-    queue.wait_tickets()
-    queue.update_wait_tickets()
+    asyncio.create_task(queue.periodic_tickets())
+    asyncio.create_task(queue.update_periodic_tickets())
 
-    queue.periodic_tickets()
-    queue.update_periodic_tickets()
-
+    asyncio.create_task(queue.solve_ticket())
     log.info('Ending...\n')
 
-    sleep(180)
 
+async def main():
+    log.info('Starting...\n')
+    asyncio.create_task(task())
+    await asyncio.sleep(120)
 
 if __name__ == '__main__':
 
     while True:
-        main()
+        asyncio.run(main())
