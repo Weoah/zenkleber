@@ -102,6 +102,14 @@ class DatabaseAcess:
         """)
         return result if result else []
 
+    def solved_tickets(self) -> list:
+        result = _db.query("""
+            SELECT ticket_id FROM ticket
+            WHERE (status = 'Solved' OR status = 'Closed')
+            AND ts != 'None'
+        """)
+        return result if result else []
+
     def add_message(self, id, chat, ts) -> None:
         _db.execute(f"""
             UPDATE ticket SET

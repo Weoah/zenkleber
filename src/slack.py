@@ -19,9 +19,9 @@ class SlackClient:
     def intervals(self, id, chat, message, res):
         send = db.get_message_sended(id)[0][0]
         db.add_sended(id)
-        if res and send % 15 == 0:
+        if res and send % 20 == 0:
             self.send_message(chat, message)
-        elif not res and send % 3 == 0:
+        elif not res and send % 5 == 0:
             self.send_message(chat, message)
 
     def send_message(self, chat, message, id=None) -> None:
@@ -65,6 +65,7 @@ class SlackClient:
         data = db.get_message(id)
         if not data:
             return
+        db.edit_message(id)
         chat, timestamp = data[0]
         time = self.brt_time(updated)
         message = f'*Ticket #{id}* | _{time} #{status}_ :catjam:'

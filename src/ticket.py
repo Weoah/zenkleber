@@ -65,7 +65,8 @@ class IMLDTicket:
         if self.comments:
             count = 1
             comment = self.comments[-1]
-            while not comment.public:
+            while not comment.public \
+                    and comment.author.name not in COLLABORATORS.keys():
                 count += 1
                 comment = self.comments[-count]
             return comment
@@ -106,9 +107,7 @@ class TicketSLA(IMLDTicket):
     def metrics(self):
         url = f'api/v2/tickets/{self.id}?include=slas'
         response = request_zendesk(url)
-        if response:
-            return response['slas']['policy_metrics']
-        raise ValueError('Not possible to access Zendesk API')
+        return response['slas']['policy_metrics']
 
     def add_metrics(self):
         for metric in self.metrics():

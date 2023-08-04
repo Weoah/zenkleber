@@ -25,9 +25,7 @@ def request_zendesk(url: str):
 def logger(name="log"):
     logger = logging.getLogger(name)
     logger.setLevel(logging.INFO)
-    formatter = logging.Formatter(
-        "%(asctime)s | %(levelname)s | %(message)s"
-    )
+    formatter = logging.Formatter("%(asctime)s | %(levelname)s | %(message)s")
 
     system_handler = logging.StreamHandler(sys.stdout)
     system_handler.setLevel(logging.DEBUG)
