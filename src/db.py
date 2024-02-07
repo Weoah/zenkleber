@@ -1,166 +1,49 @@
-from src._db import _db
+from tinydb import TinyDB, Query
+from datetime import datetime
+from pytz import timezone
+
+db = TinyDB('database.json', indent=4, sort_keys=True)
+query = Query()
 
 
-class DatabaseAcess:
-
-    def store_ticket(self, id, status, created, periodic, wait) -> None:
-        _db.execute(f"""
-            INSERT INTO ticket
-                (ticket_id, status, created_at,
-                sla_periodic, sla_wait, sended,
-                edited, chat, ts)
-            VALUES
-                ('{id}','{status}','{created}',
-                '{periodic}','{wait}', '0',
-                '0', 'None', 'None')
-        """)
-
-    def update_ticket(self, id, status, created, periodic, wait) -> None:
-        _db.execute(f"""
-            UPDATE ticket SET
-                status = '{status}',
-                created_at = '{created}',
-                sla_periodic = '{periodic}',
-                sla_wait = '{wait}'
-            WHERE
-                ticket_id = '{id}'
-        """)
-
-    def check_ticket(self, id) -> bool:
-        result = _db.query(f"""
-            SELECT ticket_id FROM ticket
-            WHERE ticket_id = '{id}'
-        """)
-        return bool(result)
-
-    def add_sended(self, id) -> None:
-        prev = _db.query(f'SELECT sended FROM ticket WHERE ticket_id = "{id}"')
-        if prev:
-            add = prev[0][0] + 1
-            _db.execute(
-                f'UPDATE ticket SET sended = "{add}" WHERE ticket_id = "{id}"')
-
-    def check_new_ticket(self, time) -> list:
-        result = _db.query(f"""
-            SELECT ticket_id, sended, ts FROM ticket
-            WHERE
-                DATETIME(created_at) >= DATETIME('now', 'localtime', '-{time}')
-                AND status = 'New'
-        """)
-        return result if result else []
-
-    def update_new_ticket(self, time) -> list:
-        result = _db.query(f"""
-            SELECT ticket_id FROM ticket
-            WHERE
-                DATETIME(created_at) >= DATETIME('now', 'localtime', '{time}')
-            AND
-                (status != 'New' AND sended != '0' AND NOT
-                created_at >= DATETIME('now', 'localtime', '-{time}'))
-        """)
-        return result if result else []
-
-    def check_requester_wait(self, time) -> list:
-        result = _db.query(f"""
-            SELECT ticket_id, sended, ts FROM ticket
-            WHERE
-                (DATETIME(sla_wait) <=
-                DATETIME('now', 'localtime', '{time}'))
-        """)
-        return result if result else []
-
-    def update_requester_wait(self, time) -> list:
-        result = _db.query(f"""
-            SELECT ticket_id, sended FROM ticket
-            WHERE
-                (DATETIME(sla_wait) >=
-                DATETIME('now', 'localtime', '{time}'))
-            AND
-                (sended != '0' AND NOT
-                sla_wait <= DATETIME('now', 'localtime', '{time}'))
-        """)
-        return result if result else []
-
-    def check_periodic(self, time) -> list:
-        result = _db.query(f"""
-            SELECT ticket_id, sended, ts FROM ticket
-            WHERE
-                (DATETIME(sla_periodic) <=
-                DATETIME('now', 'localtime', '{time}'))
-        """)
-        return result if result else []
-
-    def update_periodic(self, time) -> list:
-        result = _db.query(f"""
-            SELECT ticket_id FROM ticket
-            WHERE
-                (DATETIME(sla_periodic) >=
-                DATETIME('now', 'localtime', '{time}'))
-            AND
-                (sended != '0' AND NOT
-                sla_periodic <= DATETIME('now', 'localtime', '{time}'))
-        """)
-        return result if result else []
-
-    def solved_tickets(self) -> list:
-        result = _db.query("""
-            SELECT ticket_id FROM ticket
-            WHERE (status = 'Solved' OR status = 'Closed')
-            AND ts != 'None'
-        """)
-        return result if result else []
-
-    def add_message(self, id, chat, ts) -> None:
-        _db.execute(f"""
-            UPDATE ticket SET
-                chat = '{chat}',
-                ts = '{ts}',
-                edited = '0'
-            WHERE
-                ticket_id = '{id}'
-        """)
-
-    def edit_message(self, id) -> None:
-        _db.execute(f"""
-            UPDATE ticket SET
-                edited = "1",
-                chat = "None",
-                ts = "None",
-                sended = "0"
-            WHERE
-                ticket_id = "{id}"
-        """)
-
-    def unedit_message(self, id) -> None:
-        _db.execute(f'UPDATE ticket SET edited = "0" WHERE ticket_id = "{id}"')
-
-    def get_message(self, id) -> list:
-        result = _db.query(f"""
-            SELECT chat, ts FROM ticket
-            WHERE
-                ticket_id = '{id}'
-                AND edited = '0'
-                AND sended != '0'
-        """)
-        return result if result else []
-
-    def get_message_sended(self, id) -> list:
-        result = _db.query(f"""
-            SELECT sended FROM ticket
-            WHERE
-                ticket_id = '{id}'
-                AND sla_wait != DATETIME()
-        """)
-        return result if result else []
-
-    def get_message_reopen(self, id) -> list:
-        result = _db.query(f"""
-            SELECT chat, ts FROM ticket
-            WHERE
-                ticket_id = '{id}'
-                AND edited != '0'
-        """)
-        return result if result else []
+def br_time(iso_time):
+    return datetime.fromtimestamp(
+        datetime.fromisoformat(iso_time).timestamp(),
+        tz=timezone('America/Sao_Paulo'))
 
 
-db = DatabaseAcess()
+def add_message(ticket, message):
+    db.upsert(
+        {
+            "ticket": ticket.id,
+            "status": ticket.status,
+            "chat": message['channel'],
+            "ts": message['ts'],
+            "updated_at": br_time(ticket.updated_at).strftime("%H:%M - %d/%m")
+        },
+        query.ticket == ticket.id
+    )
+
+
+def get_message():
+    return db.search(query.ts != 0)
+
+
+def get_ticket(ticket):
+    return db.search((query.ticket == ticket) & (query.ts != 0))
+
+
+def solved_ticket(ticket):
+    db.update({"ts": 0}, query.ticket == ticket)
+
+
+def add_updated(ticket, value):
+    db.update({"updated_at": value}, query.ticket == ticket)
+
+
+def delete_ticket(ticket_id):
+    db.remove(query.ticket == ticket_id)
+
+
+def _truncate_table():
+    db.truncate()

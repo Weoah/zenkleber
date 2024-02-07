@@ -1,31 +1,49 @@
-import asyncio
+from fastapi import FastAPI
+from time import time
 
-from src import log
-from src.ticket_queue import queue
-
-
-async def task():
-    await queue.get_tickets()
-
-    asyncio.create_task(queue.new_tickets())
-    asyncio.create_task(queue.update_new_tickets())
-
-    asyncio.create_task(queue.wait_tickets())
-    asyncio.create_task(queue.update_wait_tickets())
-
-    asyncio.create_task(queue.periodic_tickets())
-    asyncio.create_task(queue.update_periodic_tickets())
-
-    asyncio.create_task(queue.solve_ticket())
-    log.info('Ending...\n')
+from src import db, zendesk as zen, slack as sla
 
 
-async def main():
-    log.info('Starting...\n')
-    asyncio.create_task(task())
-    await asyncio.sleep(120)
+app = FastAPI()
 
-if __name__ == '__main__':
 
-    while True:
-        asyncio.run(main())
+@app.get('/')
+async def index():
+    return {'message': 'tranquilo e favoravel'}
+
+
+@app.get('/periodic')
+async def periodic():
+    start = time()
+    zen.search.main()
+    return {'message': 'checado', 'process_time': f'{time() - start:.2f}'}
+
+
+@app.get('/update_message')
+async def update_message():
+    zen.update.main()
+    return {'message': 'ok', 'data': db.get_message()}
+
+
+@app.get('/close_message')
+async def close_message():
+    zen.close.main()
+    return {'message': 'ok', 'data': db.get_message()}
+
+
+@app.get('/new_ticket')
+async def new_ticket():
+    zen.new.main()
+    return {'message': 'ok'}
+
+
+@app.get('/__truncate_table')
+async def truncate_table():
+    db._truncate_table()
+    return {'message': 'ok'}
+
+
+@app.get('/__truncate_tablee')
+async def truncate_tablee():
+    sla.test_message()
+    return {'message': 'ok'}

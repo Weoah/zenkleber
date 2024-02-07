@@ -1,78 +1,96 @@
-from datetime import datetime as dt
-from slack.web.client import WebClient
-from slack.errors import SlackApiError
+from slack_bolt import App
+from slack_sdk.errors import SlackApiError
+from os import environ as env
 
-from src import log
-from src.config import SLACK_TOKEN, SLACK_OPEN_CHANNEL
-from src.db import db
+from src import template, db
 
 
-class SlackClient:
+TOKEN = env['SLACK_TOKEN']
+SECRET = env['SLACK_SECRET']
+CHANNEL = env['SLACK_CHANNEL']
 
-    def __init__(self):
-        self.client = WebClient(token=SLACK_TOKEN)
-
-    def brt_time(self, time_f):
-        time = dt.fromtimestamp(dt.fromisoformat(time_f).timestamp())
-        return time.strftime("%H:%M - %d/%m")
-
-    def intervals(self, id, chat, message, res):
-        send = db.get_message_sended(id)[0][0]
-        db.add_sended(id)
-        if res and send % 20 == 0:
-            self.send_message(chat, message)
-        elif not res and send % 5 == 0:
-            self.send_message(chat, message)
-
-    def send_message(self, chat, message, id=None) -> None:
-        try:
-            data = self.client.chat_postMessage(channel=chat, text=message)
-            if id is not None:
-                db.add_message(id, data['channel'], data['ts'])
-        except SlackApiError as error:
-            log.info(f'Erro no client do Slack: {error}')
-
-    def update_message(self, id, chat, message, res=False) -> None:
-        data = db.get_message(id)
-        if data:
-            channel, ts = data[0]
-            self.intervals(id, chat, message, res)
-            try:
-                self.client.chat_update(channel=channel, ts=ts, text=message)
-            except SlackApiError as error:
-                log.info(f'Erro no client do Slack: {error}')
-        self.reopen_message(id, message)
-
-    def edit_message(self, id, message) -> None:
-        if id is None:
-            return
-        data = db.get_message(id)
-        if data:
-            chat, ts = data[0]
-            try:
-                self.client.chat_update(channel=chat, ts=ts, text=message)
-                db.edit_message(id)
-            except SlackApiError as error:
-                log.info(f'Erro no client do Slack: {error}')
-
-    def reopen_message(self, id, message):
-        data = db.get_message_reopen(id)
-        if data:
-            db.unedit_message(id)
-            self.send_message(SLACK_OPEN_CHANNEL, message, id)
-
-    def send_end(self, id, updated, status) -> None:
-        data = db.get_message(id)
-        if not data:
-            return
-        db.edit_message(id)
-        chat, timestamp = data[0]
-        time = self.brt_time(updated)
-        message = f'*Ticket #{id}* | _{time} #{status}_ :catjam:'
-        try:
-            self.client.chat_update(channel=chat, ts=timestamp, text=message)
-        except SlackApiError as error:
-            log.info(f'Erro no client do Slack: {error}')
+client = App(token=TOKEN, signing_secret=SECRET).client
 
 
-slack = SlackClient()
+def control_message(ticket, metrics):
+    send_private(ticket, metrics)
+    if not db.get_ticket(ticket.id):
+        send_message(ticket, metrics)
+    else:
+        update_message(ticket, metrics)
+
+
+def send_message(ticket, metrics):
+    try:
+        message = client.chat_postMessage(
+            channel=CHANNEL,
+            text='Atualização periódica:',
+            blocks=template.send_periodic(ticket, metrics)
+        )
+        db.add_message(ticket, message)
+    except SlackApiError as error:
+        print(f'Error on sending update message: {error}')
+
+
+def send_private(ticket, metrics):
+    try:
+        client.chat_postMessage(
+            channel=template.mention(ticket),
+            text='Atualização periódica:',
+            blocks=template.send_periodic(ticket, metrics)
+        )
+    except SlackApiError as error:
+        print(f'Error on sending update message: {error}')
+
+
+def update_message(ticket, metrics):
+    try:
+        message = db.get_ticket(ticket.id)[0]
+        client.chat_update(
+            channel=message['chat'],
+            ts=message['ts'],
+            text='Atualização periódica:',
+            blocks=template.send_periodic(ticket, metrics)
+        )
+    except SlackApiError as error:
+        print(f'Error on sending update message: {error}')
+
+
+def solve_message(ticket):
+    try:
+        client.chat_update(
+            channel=ticket['chat'],
+            ts=ticket['ts'],
+            text='Ticket atualizado:',
+            blocks=template.solved_periodic(ticket)
+        )
+        db.solved_ticket(ticket['ticket'])
+    except SlackApiError as error:
+        print(f'Error on sending update message: {error}')
+
+
+def close_message(ticket):
+    try:
+        client.chat_update(
+            channel=ticket['chat'],
+            ts=ticket['ts'],
+            text='Ticket solucionado:',
+            blocks=template.ticket_closed(ticket)
+        )
+        db.delete_ticket(ticket['ticket'])
+    except SlackApiError as error:
+        print(f'Error on sending update message: {error}')
+
+
+def new_message(ticket):
+    if db.get_ticket(ticket.id):
+        return
+    try:
+        message = client.chat_postMessage(
+            channel=CHANNEL,
+            text='Novo ticket:',
+            blocks=template.new_ticket(ticket)
+        )
+        db.add_message(ticket, message)
+    except SlackApiError as error:
+        print(f'Error on sending update message: {error}')
